@@ -214,14 +214,26 @@ description: |
 | `description` 上限 | 解析期无上限，但**面向模型的目录会截断到 500 个字符**（UTF-16 单元，汉字算 1）。**触发词必须写进 `description`** —— `whenToUse` 会被解析但当前不参与渲染 |
 | 已知边界 | **`minimal` preset 根本不挂 skill-filesystem** → 该 preset 下看不到本 skill。`standard` / `ptc` / `cordis` 可见（本机默认 `standard`） |
 
-### 8.2 本 skill 的安装/更新方式
+### 8.2 本 skill 的安装/更新/关闭
 
-**改完源文件后跑这一条就够**（重装 + 逐文件哈希校验 + frontmatter 校验 + description 长度检查）：
+**改完源文件后跑这一条就够**（渲染 + 重装 + 逐文件哈希校验 + frontmatter 校验 + description 长度检查）：
 
 ```powershell
-& "D:\1Anewproject\dev\dsh-skills\sync.ps1"            # 重装并校验：退出码 0 = 部署与源字节一致
+& "D:\1Anewproject\dev\dsh-skills\sync.ps1"            # 退出码 0 = 部署与源渲染结果字节一致
 & "D:\1Anewproject\dev\dsh-skills\sync.ps1" -CheckOnly # 只校验，不改动
 ```
+
+**要关掉本 skill**（装上就是常驻的，这是唯一的开关）：
+
+```powershell
+& "D:\1Anewproject\dev\dsh-skills\toggle.ps1" -Off     # 从模型目录与人侧命令同时消失（不删任何东西）
+& "D:\1Anewproject\dev\dsh-skills\toggle.ps1" -On      # 打开
+& "D:\1Anewproject\dev\dsh-skills\toggle.ps1" -Status  # 看当前状态
+```
+
+- 开关**不改源文件**，而是改标记 `agent-dev-workflow\.disabled`，再把 `disable-model-invocation: true` + `user-invocable: false` 渲染进**部署副本**。所以源文件在版本控制里永远是"启用"状态。
+- 更硬的关闭：把 bundle 移进 `<DSH_HOME>\skills\.system\` —— provider 会整个跳过该目录。
+- `cycle-test.ps1` 用 28 项断言证明反复开关不会漂移（源码字节不变）。
 
 只装不校验、或只想看会做什么：
 

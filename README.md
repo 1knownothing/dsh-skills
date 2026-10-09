@@ -30,14 +30,42 @@
 
 在 `D:\1Anewproject\dev\dsh-skills` 目录下执行（Windows PowerShell 5.1 或 PowerShell 7+ 均可）。
 
-### 推荐：一条命令重装 + 校验
+### 开关它（最常用）
+
+skill 一旦装上就是常驻的。要关掉它：
 
 ```powershell
-# 重装并逐文件校验部署与源是否字节一致（退出码 0 = 一致）
+# 关闭：从模型目录和人侧命令里同时消失（什么都不删）
+powershell -ExecutionPolicy Bypass -File .\toggle.ps1 -Off
+
+# 打开
+powershell -ExecutionPolicy Bypass -File .\toggle.ps1 -On
+
+# 看当前状态
+powershell -ExecutionPolicy Bypass -File .\toggle.ps1 -Status
+```
+
+**原理**：开关不动源文件，而是改一个标记文件 `agent-dev-workflow\.disabled`，再把
+`disable-model-invocation: true` + `user-invocable: false` **渲染进部署副本**。
+所以源码在 git 里永远是"启用"状态，开关是本机状态。
+
+想要更硬的关闭（连扫描根都不进），把 bundle 移进 provider 会跳过的 `.system` 目录：
+
+```powershell
+Move-Item "$env:DSH_HOME\skills\agent-dev-workflow" "$env:DSH_HOME\skills\.system\"
+```
+
+### 一条命令重装 + 校验
+
+```powershell
+# 渲染 + 安装 + 逐文件校验（退出码 0 = 部署与渲染结果字节一致）
 powershell -ExecutionPolicy Bypass -File .\sync.ps1
 
 # 只校验，不改动任何文件
 powershell -ExecutionPolicy Bypass -File .\sync.ps1 -CheckOnly
+
+# 证明开关不会漂移：反复 ON/OFF 三轮，断言源码字节不变
+powershell -ExecutionPolicy Bypass -File .\cycle-test.ps1
 ```
 
 **为什么必须校验**：DSH 里的 skill 是**副本**，改源文件不等于改部署。`sync.ps1` 会比对每个文件的 SHA256，并顺带检查 frontmatter 合法性、kebab-case、`description` 长度（面向模型的目录上限 500 字符）。退出码非 0 就说明两者不一致。
@@ -81,9 +109,14 @@ powershell -ExecutionPolicy Bypass -File .\agent-dev-workflow\scripts\install.ps
 dsh-skills/                              # 开发侧目录（不随安装复制）
 ├─ README.md                             # 本文件
 ├─ EVALUATION.md                         # 评估报告：为什么这样改 + 证据强度
-├─ sync.ps1                              # 重装 + 逐文件哈希校验（改完源文件跑这个）
-└─ agent-dev-workflow/                   # ← 这个目录才是 skill bundle
-   ├─ SKILL.md                           # 入口：frontmatter + 全流程（被 DSH 加载的唯一文件）
+├─ toggle.ps1                            # 开关：-Off / -On / -Status
+├─ sync.ps1                              # 渲染 + 安装 + 逐文件哈希校验
+├─ build-deploy.ps1                      # 把源 + 开关标记渲染成「部署副本」
+├─ cycle-test.ps1                        # 证明开关不会漂移（28 项断言）
+├─ deploy/                               # 渲染输出，自动生成（已 gitignore）
+└─ agent-dev-workflow/                   # ← 这个目录才是 skill bundle（源，永远启用）
+   ├─ SKILL.md                           # 入口：frontmatter + 全流程
+   ├─ .disabled                          # 开关标记（存在=关闭，已 gitignore）
    ├─ references/                        # 按需加载的展开手册
    │  ├─ pipeline.md                     # 每阶段检查清单与产物格式
    │  ├─ verification.md                 # 独立验证方法论（四层 + 反向对照 + 失败分类）
