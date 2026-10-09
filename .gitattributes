@@ -1,0 +1,9 @@
+# Do NOT let Git rewrite line endings.
+#
+# sync.ps1 compares the deployed skill against the source with SHA256. Any checkout-time
+# line-ending conversion (text=auto, eol=crlf, ...) would make every file look "different"
+# after a fresh clone, turning a real integrity check into a false alarm.
+#
+# Files are stored byte-for-byte as written. The .ps1 scripts are ASCII-only by convention,
+# and PowerShell 5.1 parses LF fine, so no normalization is needed.
+* -text

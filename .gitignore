@@ -1,0 +1,16 @@
+# OS / editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*~
+
+# Scratch and temp files that must never be committed
+*.tmp
+*.log
+__pycache__/
+.agent/
+
+# Local overrides (never share machine-specific paths)
+*.local.ps1
+*.local.md
